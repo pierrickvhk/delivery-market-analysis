@@ -184,3 +184,30 @@ SELECT
 FROM stg_menu_items i
 WHERE i.price IS NOT NULL AND i.price > 0 AND i.price < 500
 ;
+
+
+-- -------------------------
+-- Veg/Vegan detection (heuristic)
+-- -------------------------
+CREATE OR REPLACE VIEW vw_veg_vegan_items AS
+SELECT
+  platform,
+  restaurant_key,
+  item_key,
+  item_name,
+  description,
+  price,
+  CASE
+    WHEN LOWER(item_name) LIKE '%vegan%' OR LOWER(COALESCE(description,'')) LIKE '%vegan%' THEN 'vegan'
+    WHEN LOWER(item_name) LIKE '%vegetar%' OR LOWER(COALESCE(description,'')) LIKE '%vegetar%' THEN 'vegetarian'
+    WHEN LOWER(item_name) LIKE '%veggie%' OR LOWER(COALESCE(description,'')) LIKE '%veggie%' THEN 'vegetarian'
+    ELSE NULL
+  END AS diet_tag
+FROM vw_item_search
+WHERE
+  LOWER(item_name) LIKE '%vegan%'
+  OR LOWER(COALESCE(description,'')) LIKE '%vegan%'
+  OR LOWER(item_name) LIKE '%vegetar%'
+  OR LOWER(COALESCE(description,'')) LIKE '%vegetar%'
+  OR LOWER(item_name) LIKE '%veggie%'
+  OR LOWER(COALESCE(description,'')) LIKE '%veggie%';
