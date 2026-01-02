@@ -181,9 +181,8 @@ SELECT
   i.item_name,
   i.description,
   i.price
-FROM stg_menu_items i
-WHERE i.price IS NOT NULL AND i.price > 0 AND i.price < 500
-;
+FROM vw_menu_items_clean i;
+
 
 
 -- -------------------------
@@ -211,3 +210,32 @@ WHERE
   OR LOWER(COALESCE(description,'')) LIKE '%vegetar%'
   OR LOWER(item_name) LIKE '%veggie%'
   OR LOWER(COALESCE(description,'')) LIKE '%veggie%';
+
+
+CREATE OR REPLACE VIEW vw_menu_items_clean AS
+SELECT *
+FROM stg_menu_items
+WHERE price IS NOT NULL
+  AND price > 0
+  AND price < 500;
+
+-- Valid prices only (used for tables/metrics)
+CREATE OR REPLACE VIEW vw_menu_items_clean AS
+SELECT *
+FROM stg_menu_items
+WHERE price IS NOT NULL
+  AND price > 0
+  AND price < 500;
+
+-- Capped prices (used for charts to avoid outliers dominating)
+CREATE OR REPLACE VIEW vw_menu_items_capped AS
+SELECT
+  platform,
+  restaurant_key,
+  item_key,
+  item_name,
+  description,
+  LEAST(GREATEST(price, 0.01), 50.0) AS price,
+  category_name
+FROM stg_menu_items
+WHERE price IS NOT NULL;

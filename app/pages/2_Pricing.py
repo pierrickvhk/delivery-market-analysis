@@ -24,16 +24,15 @@ sel_platform = st.selectbox("Platform", platforms, index=0)
 filters = Filters(platform=None if sel_platform == "All" else sel_platform)
 
 # Basic cleaning: ignore null/zero/negative prices
-df = query_df(
-    con,
+df = con.execute(
     """
     SELECT platform, price
-    FROM stg_menu_items
-    WHERE price IS NOT NULL AND price > 0 AND price < 500
-      AND ($platform IS NULL OR platform = $platform)
+    FROM vw_menu_items_clean
+    WHERE ($platform IS NULL OR platform = $platform)
     """,
-    {"platform": filters.platform},
-)
+    {"platform": None if sel_platform == "All" else sel_platform},
+).df()
+
 
 if df.empty:
     st.warning("No price data available for the selected filters.")
