@@ -148,3 +148,39 @@ JOIN takeaway.categories c
 JOIN takeaway.restaurants r
   ON cr.restaurant_id = r.restaurant_id
 ;
+
+-- -------------------------
+-- Convenience view: pizza restaurants
+-- -------------------------
+CREATE OR REPLACE VIEW vw_pizza_restaurants AS
+SELECT
+  r.platform,
+  r.restaurant_key,
+  r.restaurant_name,
+  r.city,
+  r.postal_code,
+  r.latitude,
+  r.longitude,
+  r.rating_value,
+  r.rating_count
+FROM stg_restaurants r
+JOIN stg_restaurant_categories c
+  ON c.platform = r.platform AND c.restaurant_key = r.restaurant_key
+WHERE LOWER(c.category_name) LIKE '%pizza%'
+;
+
+
+-- -------------------------
+-- Convenience view: item search (kapsalon/hummus/veg/vegan)
+-- -------------------------
+CREATE OR REPLACE VIEW vw_item_search AS
+SELECT
+  i.platform,
+  i.restaurant_key,
+  i.item_key,
+  i.item_name,
+  i.description,
+  i.price
+FROM stg_menu_items i
+WHERE i.price IS NOT NULL AND i.price > 0 AND i.price < 500
+;
