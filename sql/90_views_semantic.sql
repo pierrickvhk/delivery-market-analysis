@@ -1,22 +1,43 @@
--- G2: Unified staging (cross-platform)
+-- =========================
+-- G2 Semantic Layer (v0)
+-- =========================
+
+-- -------------------------
+-- Restaurants (unified)
+-- -------------------------
 
 CREATE OR REPLACE VIEW stg_restaurants AS
+WITH takeaway_loc AS (
+  SELECT
+    ltr.restaurant_id,
+    l.postalCode AS postal_code,
+    l.city       AS loc_city,
+    l.latitude   AS loc_latitude,
+    l.longitude  AS loc_longitude
+  FROM takeaway.locations_to_restaurants ltr
+  JOIN takeaway.locations l
+    ON l.ID = ltr.location_id
+)
+-- Takeaway
 SELECT
   'takeaway' AS platform,
-  CAST(primarySlug AS VARCHAR) AS restaurant_key,
-  CAST(name AS VARCHAR) AS restaurant_name,
-  CAST(address AS VARCHAR) AS address,
-  CAST(city AS VARCHAR) AS city,
-  NULLIF(CAST(postalCode AS VARCHAR), '') AS postal_code,
-  TRY_CAST(latitude AS DOUBLE) AS latitude,
-  TRY_CAST(longitude AS DOUBLE) AS longitude,
-  TRY_CAST(ratings AS DOUBLE) AS rating_value,
-  TRY_CAST(ratingsNumber AS BIGINT) AS rating_count,
-  TRY_CAST(deliveryFee AS DOUBLE) AS delivery_fee,
-  TRY_CAST(minOrder AS DOUBLE) AS min_order
-FROM takeaway.restaurants
+  CAST(r.primarySlug AS VARCHAR)  AS restaurant_key,
+  CAST(r.name AS VARCHAR)         AS restaurant_name,
+  CAST(r.address AS VARCHAR)      AS address,
+  CAST(COALESCE(r.city, tl.loc_city) AS VARCHAR) AS city,
+  NULLIF(CAST(tl.postal_code AS VARCHAR), '') AS postal_code,
+  TRY_CAST(COALESCE(r.latitude, tl.loc_latitude) AS DOUBLE)  AS latitude,
+  TRY_CAST(COALESCE(r.longitude, tl.loc_longitude) AS DOUBLE) AS longitude,
+  TRY_CAST(r.ratings AS DOUBLE)        AS rating_value,
+  TRY_CAST(r.ratingsNumber AS BIGINT)  AS rating_count,
+  TRY_CAST(r.deliveryFee AS DOUBLE)    AS delivery_fee,
+  TRY_CAST(r.minOrder AS DOUBLE)       AS min_order
+FROM takeaway.restaurants r
+LEFT JOIN takeaway_loc tl
+  ON tl.restaurant_id = r.restaurant_id
 
 UNION ALL
+-- Deliveroo (based on your schema screenshot 3)
 SELECT
   'deliveroo' AS platform,
   CAST(id AS VARCHAR) AS restaurant_key,
@@ -33,15 +54,16 @@ SELECT
 FROM deliveroo.restaurants
 
 UNION ALL
+-- UberEats (corrected: location__* columns)
 SELECT
   'ubereats' AS platform,
   CAST(id AS VARCHAR) AS restaurant_key,
   CAST(title AS VARCHAR) AS restaurant_name,
-  CAST(location_address AS VARCHAR) AS address,
-  CAST(location_city AS VARCHAR) AS city,
-  NULLIF(CAST(location_postal_code AS VARCHAR), '') AS postal_code,
-  TRY_CAST(location_latitude AS DOUBLE) AS latitude,
-  TRY_CAST(location_longitude AS DOUBLE) AS longitude,
+  CAST(location__address AS VARCHAR) AS address,
+  CAST(location__city AS VARCHAR) AS city,
+  NULLIF(CAST(location__postal_code AS VARCHAR), '') AS postal_code,
+  TRY_CAST(location__latitude AS DOUBLE) AS latitude,
+  TRY_CAST(location__longitude AS DOUBLE) AS longitude,
   TRY_CAST(rating__rating_value AS DOUBLE) AS rating_value,
   TRY_CAST(rating__review_count AS BIGINT) AS rating_count,
   NULL AS delivery_fee,
@@ -49,8 +71,13 @@ SELECT
 FROM ubereats.restaurants
 ;
 
--- Items (price distribution, kapsalon/hummus/veg/vegan)
+
+-- -------------------------
+-- Menu items (unified)
+-- -------------------------
+
 CREATE OR REPLACE VIEW stg_menu_items AS
+-- Takeaway
 SELECT
   'takeaway' AS platform,
   CAST(primarySlug AS VARCHAR) AS restaurant_key,
@@ -58,11 +85,11 @@ SELECT
   CAST(name AS VARCHAR) AS item_name,
   CAST(description AS VARCHAR) AS description,
   TRY_CAST(price AS DOUBLE) AS price,
-  NULL AS category_name,
-  TRY_CAST(alcoholContent AS DOUBLE) AS alcohol_content
+  NULL AS category_name
 FROM takeaway.menuItems
 
 UNION ALL
+-- Deliveroo
 SELECT
   'deliveroo' AS platform,
   CAST(restaurant_id AS VARCHAR) AS restaurant_key,
@@ -70,11 +97,11 @@ SELECT
   CAST(name AS VARCHAR) AS item_name,
   CAST(description AS VARCHAR) AS description,
   TRY_CAST(price AS DOUBLE) AS price,
-  NULL AS category_name,
-  TRY_CAST(alcohol AS DOUBLE) AS alcohol_content
+  NULL AS category_name
 FROM deliveroo.menu_items
 
 UNION ALL
+-- UberEats
 SELECT
   'ubereats' AS platform,
   CAST(restaurant_id AS VARCHAR) AS restaurant_key,
@@ -82,12 +109,17 @@ SELECT
   CAST(name AS VARCHAR) AS item_name,
   CAST(description AS VARCHAR) AS description,
   TRY_CAST(price AS DOUBLE) AS price,
-  NULL AS category_name,
-  NULL AS alcohol_content
+  NULL AS category_name
 FROM ubereats.menu_items
 ;
 
--- Restaurant categories (for pizza / cuisine overlap)
+
+-- -------------------------
+-- Restaurant categories (unified)
+-- NOTE: Takeaway uses restaurant_id, but our restaurant_key is primarySlug
+-- so we map restaurant_id -> primarySlug via takeaway.restaurants.
+-- -------------------------
+
 CREATE OR REPLACE VIEW stg_restaurant_categories AS
 -- UberEats: direct category strings
 SELECT
@@ -105,12 +137,14 @@ SELECT
 FROM deliveroo.categories
 
 UNION ALL
--- Takeaway: categories_restaurants -> categories
+-- Takeaway: categories_restaurants -> categories + map to primarySlug
 SELECT
   'takeaway' AS platform,
-  CAST(cr.restaurant_id AS VARCHAR) AS restaurant_key,
+  CAST(r.primarySlug AS VARCHAR) AS restaurant_key,
   CAST(c.name AS VARCHAR) AS category_name
 FROM takeaway.categories_restaurants cr
 JOIN takeaway.categories c
   ON cr.category_id = c.id
+JOIN takeaway.restaurants r
+  ON cr.restaurant_id = r.restaurant_id
 ;

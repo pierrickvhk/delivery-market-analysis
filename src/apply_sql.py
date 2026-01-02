@@ -13,12 +13,13 @@ def main() -> None:
 
     con = duckdb.connect(DB_PATH.as_posix())
     con.execute(SQL_PATH.read_text(encoding="utf-8"))
-    # sanity
+
     views = con.execute(
         "SELECT table_name FROM information_schema.tables "
         "WHERE table_schema='main' AND table_type='VIEW' ORDER BY 1;"
     ).fetchall()
     print("Views:", [v[0] for v in views])
+
     con.close()
 
 
