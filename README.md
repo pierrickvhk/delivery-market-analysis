@@ -241,3 +241,13 @@ A reproducible analytics workflow and a story-driven dashboard answering the req
 
 Pierrick Van Hoecke — BeCode Data Science & AI Bootcamp
 
+---
+
+## Screenshots
+
+
+![alt text](<Delivery Market Analysis (vo).png>)
+
+![alt text](<Pasted Graphic 2.png>)
+
+![alt text](<Late night availability.png>)

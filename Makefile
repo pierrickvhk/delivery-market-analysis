@@ -15,3 +15,11 @@ lint:
 
 format:
 	ruff format .
+
+.PHONY: demo run
+
+demo:
+	python -m delivery_market_analysis.demo
+
+run:
+	streamlit run app/Home.py

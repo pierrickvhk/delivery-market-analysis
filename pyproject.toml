@@ -35,4 +35,8 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[project.scripts]
+dma = "delivery_market_analysis.cli:main"
+
+
 
